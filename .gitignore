@@ -3,4 +3,5 @@ pom.xml
 /bin/
 /lib/
 /classes/
+/.settings/ccw.repl.cmdhistory.prefs
 .lein-deps-sum
