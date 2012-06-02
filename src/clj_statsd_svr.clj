@@ -12,7 +12,9 @@
 
 (defn start-receiver [port-no queue]
   (let [socket (DatagramSocket. port-no)]
-    (.start (Thread. #(while true (.put queue (receive socket)))))
+    (.start (Thread. #(while true
+                        (dorun (map (fn [data] (.put queue data))
+                                    (.split #"\n" (receive socket)))))))
     socket))
 
 (defn decode [data]
@@ -20,8 +22,8 @@
     {:bucket bucket :value value :type type :sample-rate sample-rate}
     (println "bad data:" data)))
 
-(defn handle [data]
-  (process ()))
+(defn handle [record]
+  (println (record :bucket)))
 
 (defn new-worker [queue]
   #(while true (when-let [record (decode (.take queue))] (handle record))))
