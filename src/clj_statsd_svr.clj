@@ -9,7 +9,6 @@
 
 (defn receive
   (let [size 1024
-        data (byte-array size)
-        packet (DatagramPacket. data size)]
+        packet (DatagramPacket. (byte-array size) size)]
   (.receive socket packet)
   (.put work (String. (.getData packet) 0 (.getLength packet) "UTF-8"))))
