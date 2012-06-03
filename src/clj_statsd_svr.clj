@@ -1,5 +1,6 @@
 (ns clj-statsd-svr
   "statsd protocol server"
+  (:use [clojure.string :only [replace] :rename {replace re-replace}]) 
   (:import [java.net DatagramPacket DatagramSocket]))
 
 (def port 8125)
@@ -19,7 +20,8 @@
 
 (defn decode [data]
   (if-let [[_ bucket value type sample-rate] (re-matches #"(.+):(\d+)\|(c|ms|g)(?:(?<=c)\|@(\d+(?:\.\d+)?))?" data)]
-    {:bucket bucket :value value :type type :sample-rate sample-rate}
+    (let [nicebucket (re-replace (re-replace (re-replace bucket #"\s+" "_") #"/" "-") #"[^a-zA-Z_\-0-9\.]" "")]
+      {:bucket nicebucket :value value :type type :sample-rate sample-rate})
     (println "bad data:" data)))
 
 (defn handle [record]
