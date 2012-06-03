@@ -15,6 +15,10 @@
             :gauges   (fn [x] value)} stat)]
     (update-stat stats stat bucket f)))
 
+(defn flush-stats [stats snapshot-ref]
+  (dosync (ref-set snapshot-ref stats))
+  { :counters {} :timers {} :gauges {} })
+
 (defn receive [socket]
   (let [size 1024
         packet (DatagramPacket. (byte-array size) size)]
@@ -37,10 +41,16 @@
     (println "bad data:" data)))
 
 (defn handle [{type :type value :value bucket :bucket}]
-  (send-off statistics update-stat-val type bucket value))
+  (send statistics update-stat-val type bucket value))
 
 (defn new-worker [queue]
   #(while true (when-let [record (decode (.take queue))] (handle record))))
+
+(defn report []
+  (ref snapshot {})
+  (send statistics flush-stats snapshot)
+  (await statistics)
+  @snapshot)
 
 (defn start []
   (let [worker-count 2
