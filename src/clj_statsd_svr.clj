@@ -7,16 +7,14 @@
 (def statistics (agent { :counters {} :timers {} :gauges {} }))
 
 (defn update-stat [stats stat bucket f]
+  (println "stat" bucket ((stats stat) bucket))
   (assoc stats stat (assoc (stats stat) bucket (f ((stats stat) bucket)))))
 
 (defn update-stat-val [stats stat bucket value]
-  (let [f ({:counters #(+ value (or % 0))
-            :timers #()
-            :gauges #(value)} stat)]
+  (let [f ({:counters (fn [x] (+ value (or x 0)))
+            :timers   (fn [x] (conj x value)) 
+            :gauges   (fn [x] value)} stat)]
     (update-stat stats stat bucket f)))
-
-(defn inc-counter [stats bucket delta]
-  (update-stat stats :counters bucket #(+ delta (or % 0))))
 
 (defn receive [socket]
   (let [size 1024
@@ -39,9 +37,8 @@
       {:bucket nicebucket :value nicevalue :type nicetype })
     (println "bad data:" data)))
 
-(defn handle [record]
-  (println (record :value))
-  (send-off statistics update-stat-val (record :type) (record :bucket) (record :value)))
+(defn handle [{type :type value :value bucket :bucket}]
+  (send-off statistics update-stat-val type bucket value))
 
 (defn new-worker [queue]
   #(while true (when-let [record (decode (.take queue))] (handle record))))
