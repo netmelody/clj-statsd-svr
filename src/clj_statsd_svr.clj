@@ -7,7 +7,6 @@
 (def statistics (agent { :counters {} :timers {} :gauges {} }))
 
 (defn update-stat [stats stat bucket f]
-  (println "stat" bucket ((stats stat) bucket))
   (assoc stats stat (assoc (stats stat) bucket (f ((stats stat) bucket)))))
 
 (defn update-stat-val [stats stat bucket value]
