@@ -7,10 +7,13 @@
 ;configuration
 (def port 8125)
 (def flushInterval 10000)
-(def backends [ #(println %) ])
+(def backends '[backends.simple backends.graphite])
 
+;initialisation
+(doseq [backend backends] (require backend))
 (def statistics (agent { :counters {} :timers {} :gauges {} }))
 
+;statistics
 (defn update-stat [stats stat bucket f]
   (assoc stats stat (assoc (stats stat) bucket (f ((stats stat) bucket)))))
 
@@ -24,6 +27,7 @@
   (dosync (ref-set snapshot-ref stats))
   { :counters {} :timers {} :gauges {} })
 
+;listening
 (defn receive [socket]
   (let [packet (DatagramPacket. (byte-array 1024) 1024)]
     (.receive socket packet)
@@ -34,6 +38,7 @@
     (.start (Thread. #(while true (doseq [data (.split #"\n" (receive socket))]
                                     (.put queue data)))))))
 
+;decoding
 (defn decode [data]
   (if-let [[_ bucket value type sample-rate] (re-matches #"(.+):(\d+)\|(c|ms|g)(?:(?<=c)\|@(\d+(?:\.\d+)?))?" data)]
     (let [nicebucket (re-replace (re-replace (re-replace bucket #"\s+" "_") #"/" "-") #"[^a-zA-Z_\-0-9\.]" "")
@@ -48,6 +53,7 @@
 (defn new-worker [queue]
   #(while true (when-let [record (decode (.take queue))] (handle record))))
 
+;reporting
 (defn report []
   (let [snapshot (ref {})]
     (send statistics flush-stats snapshot)
@@ -55,8 +61,9 @@
     (assoc @snapshot :timestamp (System/currentTimeMillis))))
 
 (defn distribute [report]
-  (doseq [backend backends] (future (backend report))))
+  (doseq [backend backends] (future (((ns-publics backend) 'publish) report))))
 
+;lifecycle
 (defn start []
   (let [worker-count 2
         work-queue (LinkedBlockingQueue.)
