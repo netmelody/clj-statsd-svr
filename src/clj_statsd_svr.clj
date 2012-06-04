@@ -71,11 +71,11 @@
         done (atom false)]
     (while (and (not @done) (.hasNextLine in))
       (let [command (.trim (.nextLine in))]
-        (println command)
-        (if (= "exit" command)
-          (swap! done true))))
-    (.close in)
-    (.close out)))
+        (if (= "help" command)
+          (.println out "Commands: stats, counters, timers, gauges, delcounters, deltimers, delgauges, quit\n\n"))
+        (if (= "quit" command)
+          (swap! done #(not %)))))
+    (.close socket)))
 
 (defn start-manager [port-no]
   (let [server (java.net.ServerSocket. port-no)]
