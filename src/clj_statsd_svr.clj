@@ -58,7 +58,7 @@
   (let [snapshot (ref {})]
     (send statistics flush-stats snapshot)
     (await statistics)
-    (assoc @snapshot :timestamp (System/currentTimeMillis))))
+    (assoc @snapshot :timestamp (System/currentTimeMillis) :flush-interval flushInterval)))
 
 (defn distribute [report]
   (doseq [backend backends] (future (((ns-publics backend) 'publish) report))))
