@@ -1,0 +1,5 @@
+(ns backends.graphite)
+
+(fn [{timestamp :timestamp counters :counters timers :timers gauges :gauges}]
+  (let [epoch (/ timestamp 1000)]
+    (println "graphite epoch " epoch)))
