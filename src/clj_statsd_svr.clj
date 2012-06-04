@@ -7,7 +7,7 @@
 ;configuration
 (def port 8125)
 (def flushInterval 10000)
-(def backends (seq [ #(println %) ]))
+(def backends [ #(println %) ])
 
 (def statistics (agent { :counters {} :timers {} :gauges {} }))
 
@@ -31,9 +31,8 @@
 
 (defn start-receiver [port-no queue]
   (let [socket (DatagramSocket. port-no)]
-    (.start (Thread. #(while true
-                        (dorun (map (fn [data] (.put queue data))
-                                    (.split #"\n" (receive socket)))))))))
+    (.start (Thread. #(while true (doseq [data (.split #"\n" (receive socket))]
+                                    (.put queue data)))))))
 
 (defn decode [data]
   (if-let [[_ bucket value type sample-rate] (re-matches #"(.+):(\d+)\|(c|ms|g)(?:(?<=c)\|@(\d+(?:\.\d+)?))?" data)]
@@ -56,7 +55,7 @@
     (assoc @snapshot :timestamp (System/currentTimeMillis))))
 
 (defn distribute [report]
-  (dorun (map #(% report) backends))) 
+  (doseq [backend backends] (future (backend report))))
 
 (defn start []
   (let [worker-count 2
@@ -64,5 +63,5 @@
         work-executor (Executors/newFixedThreadPool worker-count)
         report-executor (Executors/newSingleThreadScheduledExecutor)]
     (start-receiver port work-queue)
-    (doall (for [_ (range worker-count)] (.submit work-executor (new-worker work-queue))))
+    (dotimes [_ worker-count] (.submit work-executor (new-worker work-queue)))
     (.scheduleAtFixedRate report-executor #(distribute (report)) flushInterval flushInterval TimeUnit/MILLISECONDS)))
