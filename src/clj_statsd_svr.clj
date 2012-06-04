@@ -5,12 +5,13 @@
   (:import [java.util.concurrent Executors LinkedBlockingQueue TimeUnit]))
 
 ;configuration
-(def port 8125)
-(def flushInterval 10000)
-(def backends '[backends.simple backends.graphite])
+(def config {:port 8125
+             :mgmt-port 8126
+             :flush-interval 10000
+             :backends '[backends.simple backends.graphite]})
 
 ;initialisation
-(doseq [backend backends] (require backend))
+(doseq [backend (config :backends)] (require backend))
 (def statistics (agent { :counters {} :timers {} :gauges {} }))
 
 ;statistics
@@ -58,10 +59,27 @@
   (let [snapshot (ref {})]
     (send statistics flush-stats snapshot)
     (await statistics)
-    (assoc @snapshot :timestamp (System/currentTimeMillis) :flush-interval flushInterval)))
+    (assoc @snapshot :timestamp (System/currentTimeMillis) :flush-interval (config :flush-interval))))
 
 (defn distribute [report]
-  (doseq [backend backends] (future (((ns-publics backend) 'publish) report))))
+  (doseq [backend (config :backends)] (future (((ns-publics backend) 'publish) report))))
+
+;manangement
+(defn manage-via [socket]
+  (let [in (java.util.Scanner. (.getInputStream socket))
+        out (java.io.PrintWriter. (.getOutputStream socket) true)
+        done (atom false)]
+    (while (and (not @done) (.hasNextLine in))
+      (let [command (.trim (.nextLine in))]
+        (println command)
+        (if (= "exit" command)
+          (swap! done true))))
+    (.close in)
+    (.close out)))
+
+(defn start-manager [port-no]
+  (let [server (java.net.ServerSocket. port-no)]
+    (.start (Thread. #(while true (let [socket (.accept server)] (future (manage-via socket))))))))
 
 ;lifecycle
 (defn start []
@@ -69,6 +87,6 @@
         work-queue (LinkedBlockingQueue.)
         work-executor (Executors/newFixedThreadPool worker-count)
         report-executor (Executors/newSingleThreadScheduledExecutor)]
-    (start-receiver port work-queue)
+    (start-receiver (config :port) work-queue)
     (dotimes [_ worker-count] (.submit work-executor (new-worker work-queue)))
-    (.scheduleAtFixedRate report-executor #(distribute (report)) flushInterval flushInterval TimeUnit/MILLISECONDS)))
+    (.scheduleAtFixedRate report-executor #(distribute (report)) (config :flush-interval) (config :flush-interval) TimeUnit/MILLISECONDS)))
