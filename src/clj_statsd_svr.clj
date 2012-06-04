@@ -55,6 +55,8 @@
 (defn start []
   (let [worker-count 2
         work-queue (java.util.concurrent.LinkedBlockingQueue.)
-        executor (java.util.concurrent.Executors/newFixedThreadPool worker-count)]
+        work-executor (java.util.concurrent.Executors/newFixedThreadPool worker-count)
+        report-executor (java.util.concurrent.Executors/newSingleThreadScheduledExecutor)]
     (start-receiver port work-queue)
-    (doall (for [_ (range worker-count)] (.submit executor (new-worker work-queue))))))
+    (doall (for [_ (range worker-count)] (.submit work-executor (new-worker work-queue))))
+    (.scheduleAtFixedRate report-executor #(println (report)) 10 10 java.util.concurrent.TimeUnit/SECONDS)))
