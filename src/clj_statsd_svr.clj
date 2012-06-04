@@ -47,7 +47,7 @@
   #(while true (when-let [record (decode (.take queue))] (handle record))))
 
 (defn report []
-  (ref snapshot {})
+  (def snapshot (ref {}))
   (send statistics flush-stats snapshot)
   (await statistics)
   @snapshot)
