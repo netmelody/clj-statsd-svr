@@ -7,6 +7,7 @@
 ;configuration
 (def port 8125)
 (def flushInterval 10000)
+(def backends (seq [ #(println %) ]))
 
 (def statistics (agent { :counters {} :timers {} :gauges {} }))
 
@@ -52,7 +53,10 @@
   (let [snapshot (ref {})]
     (send statistics flush-stats snapshot)
     (await statistics)
-    @snapshot))
+    (assoc @snapshot :timestamp (System/currentTimeMillis))))
+
+(defn distribute [report]
+  (dorun (map #(% report) backends))) 
 
 (defn start []
   (let [worker-count 2
@@ -61,4 +65,4 @@
         report-executor (Executors/newSingleThreadScheduledExecutor)]
     (start-receiver port work-queue)
     (doall (for [_ (range worker-count)] (.submit work-executor (new-worker work-queue))))
-    (.scheduleAtFixedRate report-executor #(println (report)) flushInterval flushInterval TimeUnit/MILLISECONDS)))
+    (.scheduleAtFixedRate report-executor #(distribute (report)) flushInterval flushInterval TimeUnit/MILLISECONDS)))
