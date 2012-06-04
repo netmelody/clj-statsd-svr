@@ -1,7 +1,8 @@
 (ns clj-statsd-svr
   "statsd protocol server"
   (:use [clojure.string :only [replace] :rename {replace re-replace}]) 
-  (:import [java.net DatagramPacket DatagramSocket]))
+  (:import [java.net DatagramPacket DatagramSocket])
+  (:import [java.util.concurrent Executors LinkedBlockingQueue TimeUnit]))
 
 (def port 8125)
 (def statistics (agent { :counters {} :timers {} :gauges {} }))
@@ -54,9 +55,9 @@
 
 (defn start []
   (let [worker-count 2
-        work-queue (java.util.concurrent.LinkedBlockingQueue.)
-        work-executor (java.util.concurrent.Executors/newFixedThreadPool worker-count)
-        report-executor (java.util.concurrent.Executors/newSingleThreadScheduledExecutor)]
+        work-queue (LinkedBlockingQueue.)
+        work-executor (Executors/newFixedThreadPool worker-count)
+        report-executor (Executors/newSingleThreadScheduledExecutor)]
     (start-receiver port work-queue)
     (doall (for [_ (range worker-count)] (.submit work-executor (new-worker work-queue))))
-    (.scheduleAtFixedRate report-executor #(println (report)) 10 10 java.util.concurrent.TimeUnit/SECONDS)))
+    (.scheduleAtFixedRate report-executor #(println (report)) 10 10 TimeUnit/SECONDS)))
