@@ -4,7 +4,10 @@
   (:import [java.net DatagramPacket DatagramSocket])
   (:import [java.util.concurrent Executors LinkedBlockingQueue TimeUnit]))
 
+;configuration
 (def port 8125)
+(def flushInterval 10000)
+
 (def statistics (agent { :counters {} :timers {} :gauges {} }))
 
 (defn update-stat [stats stat bucket f]
@@ -21,8 +24,7 @@
   { :counters {} :timers {} :gauges {} })
 
 (defn receive [socket]
-  (let [size 1024
-        packet (DatagramPacket. (byte-array size) size)]
+  (let [packet (DatagramPacket. (byte-array 1024) 1024)]
     (.receive socket packet)
     (String. (.getData packet) 0 (.getLength packet) "UTF-8")))
 
@@ -30,8 +32,7 @@
   (let [socket (DatagramSocket. port-no)]
     (.start (Thread. #(while true
                         (dorun (map (fn [data] (.put queue data))
-                                    (.split #"\n" (receive socket)))))))
-    socket))
+                                    (.split #"\n" (receive socket)))))))))
 
 (defn decode [data]
   (if-let [[_ bucket value type sample-rate] (re-matches #"(.+):(\d+)\|(c|ms|g)(?:(?<=c)\|@(\d+(?:\.\d+)?))?" data)]
@@ -48,10 +49,10 @@
   #(while true (when-let [record (decode (.take queue))] (handle record))))
 
 (defn report []
-  (def snapshot (ref {}))
-  (send statistics flush-stats snapshot)
-  (await statistics)
-  @snapshot)
+  (let [snapshot (ref {})]
+    (send statistics flush-stats snapshot)
+    (await statistics)
+    @snapshot))
 
 (defn start []
   (let [worker-count 2
@@ -60,4 +61,4 @@
         report-executor (Executors/newSingleThreadScheduledExecutor)]
     (start-receiver port work-queue)
     (doall (for [_ (range worker-count)] (.submit work-executor (new-worker work-queue))))
-    (.scheduleAtFixedRate report-executor #(println (report)) 10 10 TimeUnit/SECONDS)))
+    (.scheduleAtFixedRate report-executor #(println (report)) flushInterval flushInterval TimeUnit/MILLISECONDS)))
