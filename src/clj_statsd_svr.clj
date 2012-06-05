@@ -66,15 +66,18 @@
 
 ;manangement
 (defn manage-via [socket]
-  (let [in (java.util.Scanner. (.getInputStream socket))
+  (let [in (.useDelimiter (java.util.Scanner. (.getInputStream socket)) #"[^\w\.\t]")
         out (java.io.PrintWriter. (.getOutputStream socket) true)
-        done (atom false)]
+        done (atom false)
+        commands {"quit"     #(do (swap! done (fn [x] (not x))) "bye")
+                  "help"     #(identity "Commands: stats, counters, timers, gauges, delcounters, deltimers, delgauges, quit")
+                  "stats"    #(System/currentTimeMillis)
+                  "counters" #(@statistics :counters)
+                  "timers"   #(@statistics :timers)
+                  "gauges"   #(@statistics :gauges)}]
     (while (and (not @done) (.hasNextLine in))
-      (let [command (.trim (.nextLine in))]
-        (if (= "help" command)
-          (.println out "Commands: stats, counters, timers, gauges, delcounters, deltimers, delgauges, quit\n\n"))
-        (if (= "quit" command)
-          (swap! done #(not %)))))
+      (when-let [response (commands (.trim (.nextLine in)))]
+        (.println out (str (response) "\n"))))
     (.close socket)))
 
 (defn start-manager [port-no]
