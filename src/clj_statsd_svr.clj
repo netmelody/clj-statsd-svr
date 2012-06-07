@@ -42,7 +42,7 @@
 ;decoding
 (defn decode [data]
   (if-let [[_ bucket value type sample-rate] (re-matches #"(.+):(\d+)\|(c|ms|g)(?:(?<=c)\|@(\d+(?:\.\d+)?))?" data)]
-    (let [nicebucket (re-replace (re-replace (re-replace bucket #"\s+" "_") #"/" "-") #"[^a-zA-Z_\-0-9\.]" "")
+    (let [nicebucket (-> bucket (re-replace #"\s+" "_") (re-replace #"/" "-") (re-replace #"[^a-zA-Z_\-0-9\.]" "")) 
           nicevalue (/ (Double/parseDouble value) (Double/parseDouble (or sample-rate "1")))
           nicetype ({"c" :counters "ms" :timers "g" :gauges} type)]
       {:bucket nicebucket :value nicevalue :type nicetype })
