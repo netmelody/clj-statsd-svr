@@ -62,7 +62,7 @@
     (assoc @snapshot :timestamp (System/currentTimeMillis) :flush-interval (config :flush-interval))))
 
 (defn distribute [report]
-  (doseq [backend (config :backends)] (future (((ns-publics backend) 'publish) report))))
+  (doseq [backend (config :backends)] (future ((ns-resolve backend 'publish) report))))
 
 ;manangement
 (defn manage-via [socket]
