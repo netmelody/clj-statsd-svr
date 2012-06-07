@@ -69,12 +69,12 @@
   (let [in (.useDelimiter (java.util.Scanner. (.getInputStream socket)) #"[^\w\.\t]")
         out (java.io.PrintWriter. (.getOutputStream socket) true)
         done (atom false)
-        commands {"quit"     #(do (swap! done (fn [x] (not x))) "bye")
-                  "help"     #(identity "Commands: stats, counters, timers, gauges, delcounters, deltimers, delgauges, quit")
-                  "stats"    #(System/currentTimeMillis)
-                  "counters" #(@statistics :counters)
-                  "timers"   #(@statistics :timers)
-                  "gauges"   #(@statistics :gauges)}]
+        actions {"quit"     #(do (swap! done (fn [x] (not x))) "bye")
+                 "stats"    #(System/currentTimeMillis)
+                 "counters" #(@statistics :counters)
+                 "timers"   #(@statistics :timers)
+                 "gauges"   #(@statistics :gauges)}
+        commands (assoc actions "help" #(str "Commands: help, " (reduce (fn [x y] (str x ", " y)) (keys actions))))]
     (while (and (not @done) (.hasNextLine in))
       (when-let [response (commands (.trim (.nextLine in)))]
         (.println out (str (response) "\n"))))
