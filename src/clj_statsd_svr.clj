@@ -15,7 +15,8 @@
 
 ;backends
 (doseq [backend (config :backends)] (require backend))
-;(defn backend-send [function ])
+(defn backend-send [function & args]
+  (doall (for [backend (config :backends)] (future (apply (ns-resolve backend function) args)))))
 
 ;statistics
 (defn update-stat [stats stat bucket f]
@@ -65,13 +66,15 @@
     (assoc @snapshot :timestamp (System/currentTimeMillis))))
 
 (defn distribute [report config]
-  (doseq [backend (config :backends)] (future ((ns-resolve backend 'publish) report config))))
+  (backend-send 'publish report config))
 
 ;manangement
 (defn vitals [startup-time-millis]
-  (str "uptime: " (unchecked-divide-int (- (System/currentTimeMillis) startup-time-millis) 1000) "\n"
+  (let [backend-status (reduce str (map #(str @% "\n") (backend-send 'status)))]
+    (str "uptime: " (unchecked-divide-int (- (System/currentTimeMillis) startup-time-millis) 1000) "\n"
        "messages.bad_lines_seen: 0\n"
-       "messages.last_msg_seen: 0\n"))
+       "messages.last_msg_seen: 0\n"
+       backend-status)))
 
 (defn manage-via [socket startup-time-millis]
   (let [in (.useDelimiter (java.util.Scanner. (.getInputStream socket)) #"[^\w\.\t]")
