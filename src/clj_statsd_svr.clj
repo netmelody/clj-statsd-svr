@@ -50,10 +50,11 @@
           nicevalue (/ (Double/parseDouble value) (Double/parseDouble (or sample-rate "1")))
           nicetype ({"c" :counters "ms" :timers "g" :gauges} type)]
       {:bucket nicebucket :value nicevalue :type nicetype })
-    (println "bad data:" data)))
+    {:bucket :bad_lines_seen :value 1 :type :counters }))
 
 (defn handle [{type :type value :value bucket :bucket}]
-  (send statistics update-stat-val type bucket value))
+  (send statistics update-stat-val type bucket value)
+  (send statistics update-stat-val :gauges :last_msg_seen (System/currentTimeMillis)))
 
 (defn new-worker [queue]
   #(while true (when-let [record (decode (.take queue))] (handle record))))
@@ -70,10 +71,11 @@
 
 ;manangement
 (defn vitals [startup-time-millis]
-  (str "uptime: " (unchecked-divide-int (- (System/currentTimeMillis) startup-time-millis) 1000) "\n"
-       "messages.bad_lines_seen: 0\n"
-       "messages.last_msg_seen: 0\n"
-       (reduce str (map #(str @% "\n") (backend-send 'status)))))
+  (let [seconds-since #(or % (unchecked-divide-int (- (System/currentTimeMillis) %) 1000) 0)]
+    (str "uptime: " (seconds-since startup-time-millis) "\n"
+         "messages.bad_lines_seen: " (or (@statistics :counters :bad_lines_seen) 0) "\n"
+         "messages.last_msg_seen: " (seconds-since (@statistics :gauges :last_msg_seen)) "\n" 
+         (reduce str (map #(str @% "\n") (backend-send 'status))))))
 
 (defn manage-via [socket startup-time-millis]
   (let [in (.useDelimiter (java.util.Scanner. (.getInputStream socket)) #"[^\w\.\t]")
