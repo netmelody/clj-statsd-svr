@@ -1,4 +1,4 @@
 (ns backends.simple)
 
-(defn publish [report]
+(defn publish [report config]
   (println report))

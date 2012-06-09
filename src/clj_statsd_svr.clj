@@ -59,10 +59,10 @@
   (let [snapshot (ref {})]
     (send statistics flush-stats snapshot)
     (await statistics)
-    (assoc @snapshot :timestamp (System/currentTimeMillis) :flush-interval (config :flush-interval))))
+    (assoc @snapshot :timestamp (System/currentTimeMillis))))
 
-(defn distribute [report]
-  (doseq [backend (config :backends)] (future ((ns-resolve backend 'publish) report))))
+(defn distribute [report config]
+  (doseq [backend (config :backends)] (future ((ns-resolve backend 'publish) report config))))
 
 ;manangement
 (defn manage-via [socket]
@@ -92,4 +92,4 @@
         report-executor (Executors/newSingleThreadScheduledExecutor)]
     (start-receiver (config :port) work-queue)
     (dotimes [_ worker-count] (.submit work-executor (new-worker work-queue)))
-    (.scheduleAtFixedRate report-executor #(distribute (report)) (config :flush-interval) (config :flush-interval) TimeUnit/MILLISECONDS)))
+    (.scheduleAtFixedRate report-executor #(distribute (report) config) (config :flush-interval) (config :flush-interval) TimeUnit/MILLISECONDS)))
