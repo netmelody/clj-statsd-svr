@@ -70,11 +70,10 @@
 
 ;manangement
 (defn vitals [startup-time-millis]
-  (let [backend-status (reduce str (map #(str @% "\n") (backend-send 'status)))]
-    (str "uptime: " (unchecked-divide-int (- (System/currentTimeMillis) startup-time-millis) 1000) "\n"
+  (str "uptime: " (unchecked-divide-int (- (System/currentTimeMillis) startup-time-millis) 1000) "\n"
        "messages.bad_lines_seen: 0\n"
        "messages.last_msg_seen: 0\n"
-       backend-status)))
+       (reduce str (map #(str @% "\n") (backend-send 'status)))))
 
 (defn manage-via [socket startup-time-millis]
   (let [in (.useDelimiter (java.util.Scanner. (.getInputStream socket)) #"[^\w\.\t]")
