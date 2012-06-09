@@ -68,13 +68,13 @@
 (defn manage-via [socket]
   (let [in (.useDelimiter (java.util.Scanner. (.getInputStream socket)) #"[^\w\.\t]")
         out (java.io.PrintWriter. (.getOutputStream socket) true)
-        done (atom false)
-        actions {"quit"     #(do (swap! done (fn [x] (not x))) "bye")
-                 "stats"    #(System/currentTimeMillis)
-                 "counters" #(@statistics :counters)
-                 "timers"   #(@statistics :timers)
-                 "gauges"   #(@statistics :gauges)}
-        commands (assoc actions "help" #(str "Commands: help, " (reduce (fn [x y] (str x ", " y)) (keys actions))))]
+        done (atom false)]
+    (def commands {"quit"     #(do (swap! done (fn [x] (not x))) "bye")
+                   "help"     #(str "Commands: help, " (reduce (fn [x y] (str x ", " y)) (keys commands)))
+                   "stats"    #(System/currentTimeMillis)
+                   "counters" #(@statistics :counters)
+                   "timers"   #(@statistics :timers)
+                   "gauges"   #(@statistics :gauges)})
     (while (and (not @done) (.hasNextLine in))
       (when-let [response (commands (.trim (.nextLine in)))]
         (.println out (str (response) "\n"))))
