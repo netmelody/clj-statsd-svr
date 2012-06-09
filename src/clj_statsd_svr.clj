@@ -30,7 +30,7 @@
 
 (defn flush-stats [stats snapshot-ref]
   (dosync (ref-set snapshot-ref stats))
-  { :counters {} :timers {} :gauges {} })
+  (merge stats { :counters {} :timers {} :gauges {} }))
 
 ;listening
 (defn receive [socket]
@@ -106,5 +106,5 @@
         report-executor (Executors/newSingleThreadScheduledExecutor)]
     (start-receiver (config :port) work-queue)
     (dotimes [_ worker-count] (.submit work-executor (new-worker work-queue)))
-    (start-manager (config :mgmt-port (System/currentTimeMillis))) 
+    (start-manager (config :mgmt-port) (System/currentTimeMillis)) 
     (.scheduleAtFixedRate report-executor #(distribute (report) config) (config :flush-interval) (config :flush-interval) TimeUnit/MILLISECONDS)))
