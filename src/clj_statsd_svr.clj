@@ -70,13 +70,13 @@
         out (java.io.PrintWriter. (.getOutputStream socket) true)
         done (atom false)]
     (def commands {"quit"     #(do (swap! done (fn [x] (not x))) "bye")
-                   "help"     #(str "Commands: help, " (reduce (fn [x y] (str x ", " y)) (keys commands)))
+                   "help"     #(str "Commands: " (reduce (fn [x y] (str x ", " y)) (keys commands)))
                    "stats"    #(System/currentTimeMillis)
                    "counters" #(@statistics :counters)
                    "timers"   #(@statistics :timers)
                    "gauges"   #(@statistics :gauges)})
-    (while (and (not @done) (.hasNextLine in))
-      (when-let [response (commands (.trim (.nextLine in)))]
+    (while (and (not @done) (.hasNext in))
+      (when-let [response (commands (.trim (.next in)))]
         (.println out (str (response) "\n"))))
     (.close socket)))
 
