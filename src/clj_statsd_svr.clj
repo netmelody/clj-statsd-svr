@@ -74,10 +74,10 @@
   (int (/ (- (System/currentTimeMillis) (or time-millis 0)) 1000)))
 
 (defn vitals [startup-time-millis]
-  (str "uptime: " (seconds-since startup-time-millis) "\n"
-       "messages.bad_lines_seen: " (or (:bad_lines_seen (:counters @statistics)) 0) "\n"
-       "messages.last_msg_seen: " (seconds-since (:last_msg_seen (:gauges @statistics))) "\n" 
-       (reduce str (map #(str @% "\n") (backend-send 'status)))))
+  (str "uptime: " (seconds-since startup-time-millis) "\r\n"
+       "messages.bad_lines_seen: " (or (:bad_lines_seen (:counters @statistics)) 0) "\r\n"
+       "messages.last_msg_seen: " (seconds-since (:last_msg_seen (:gauges @statistics))) "\r\n" 
+       (reduce str (map #(str @% "\r\n") (backend-send 'status)))))
 
 (defn manage-via [socket startup-time-millis]
   (let [in (.useDelimiter (java.util.Scanner. (.getInputStream socket)) #"[^\w\.\t]")
