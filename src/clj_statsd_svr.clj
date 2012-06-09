@@ -11,8 +11,11 @@
              :backends '[backends.simple backends.graphite]})
 
 ;initialisation
-(doseq [backend (config :backends)] (require backend))
 (def statistics (agent { :counters {} :timers {} :gauges {} }))
+
+;backends
+(doseq [backend (config :backends)] (require backend))
+;(defn backend-send [function ])
 
 ;statistics
 (defn update-stat [stats stat bucket f]
@@ -65,13 +68,18 @@
   (doseq [backend (config :backends)] (future ((ns-resolve backend 'publish) report config))))
 
 ;manangement
-(defn manage-via [socket]
+(defn vitals [startup-time-millis]
+  (str "uptime: " (unchecked-divide-int (- (System/currentTimeMillis) startup-time-millis) 1000) "\n"
+       "messages.bad_lines_seen: 0\n"
+       "messages.last_msg_seen: 0\n"))
+
+(defn manage-via [socket startup-time-millis]
   (let [in (.useDelimiter (java.util.Scanner. (.getInputStream socket)) #"[^\w\.\t]")
         out (java.io.PrintWriter. (.getOutputStream socket) true)
         done (atom false)]
     (def commands {"quit"     #(do (swap! done (fn [x] (not x))) "bye")
                    "help"     #(str "Commands: " (reduce (fn [x y] (str x ", " y)) (keys commands)))
-                   "stats"    #(System/currentTimeMillis)
+                   "stats"    #(vitals startup-time-millis)
                    "counters" #(@statistics :counters)
                    "timers"   #(@statistics :timers)
                    "gauges"   #(@statistics :gauges)})
@@ -80,9 +88,9 @@
         (.println out (str (response) "\n"))))
     (.close socket)))
 
-(defn start-manager [port-no]
+(defn start-manager [port-no startup-time-millis]
   (let [server (java.net.ServerSocket. port-no)]
-    (.start (Thread. #(while true (let [socket (.accept server)] (future (manage-via socket))))))))
+    (.start (Thread. #(while true (let [socket (.accept server)] (future (manage-via socket startup-time-millis))))))))
 
 ;lifecycle
 (defn start []
@@ -92,4 +100,5 @@
         report-executor (Executors/newSingleThreadScheduledExecutor)]
     (start-receiver (config :port) work-queue)
     (dotimes [_ worker-count] (.submit work-executor (new-worker work-queue)))
+    (start-manager (config :mgmt-port (System/currentTimeMillis))) 
     (.scheduleAtFixedRate report-executor #(distribute (report) config) (config :flush-interval) (config :flush-interval) TimeUnit/MILLISECONDS)))
