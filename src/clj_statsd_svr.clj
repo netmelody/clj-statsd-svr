@@ -70,12 +70,14 @@
   (backend-send 'publish report config))
 
 ;manangement
+(defn seconds-since [time-millis]
+  (int (/ (- (System/currentTimeMillis) (or time-millis 0)) 1000)))
+
 (defn vitals [startup-time-millis]
-  (let [seconds-since #(or % (unchecked-divide-int (- (System/currentTimeMillis) %) 1000) 0)]
-    (str "uptime: " (seconds-since startup-time-millis) "\n"
-         "messages.bad_lines_seen: " (or (@statistics :counters :bad_lines_seen) 0) "\n"
-         "messages.last_msg_seen: " (seconds-since (@statistics :gauges :last_msg_seen)) "\n" 
-         (reduce str (map #(str @% "\n") (backend-send 'status))))))
+  (str "uptime: " (seconds-since startup-time-millis) "\n"
+       "messages.bad_lines_seen: " (or (:bad_lines_seen (:counters @statistics)) 0) "\n"
+       "messages.last_msg_seen: " (seconds-since (:last_msg_seen (:gauges @statistics))) "\n" 
+       (reduce str (map #(str @% "\n") (backend-send 'status)))))
 
 (defn manage-via [socket startup-time-millis]
   (let [in (.useDelimiter (java.util.Scanner. (.getInputStream socket)) #"[^\w\.\t]")
