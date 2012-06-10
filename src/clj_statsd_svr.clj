@@ -23,14 +23,19 @@
   (assoc stats stat (assoc (stats stat) bucket (f ((stats stat) bucket)))))
 
 (defn update-stat-val [stats stat bucket value]
-  (let [f ({:counters (fn [x] (+ value (or x 0)))
-            :timers   (fn [x] (conj x value)) 
-            :gauges   (fn [x] value)} stat)]
+  (let [f (stat {:counters (fn [x] (+ value (or x 0)))
+                 :timers   (fn [x] (conj x value)) 
+                 :gauges   (fn [x] value)})]
     (update-stat stats stat bucket f)))
+
+(defn reset-map [map origin]
+  (into {} (for [[k v] map] [k (if (string? k) origin v)])))
 
 (defn flush-stats [stats snapshot-ref]
   (dosync (ref-set snapshot-ref stats))
-  (merge stats { :counters {} :timers {} :gauges {} }))
+  {:counters (reset-map (:counters stats) 0)
+   :timers (reset-map (:timers stats) [])
+   :gauges (reset-map (:gauges stats) 0)})
 
 ;listening
 (defn receive [socket]
