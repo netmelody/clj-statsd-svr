@@ -1,4 +1,5 @@
 *~
+*.swp
 *.jar
 /pom.xml
 /.settings/ccw.repl.cmdhistory.prefs

@@ -12,13 +12,6 @@
 (defn gauge-to-str [[name value]]
   (str name " " value))
 
-(defn publish [{timestamp :timestamp counters :counters timers :timers gauges :gauges} config]
-  (let [epoch (/ timestamp 1000)
-        datapoints (concat (map counter-to-str counters)
-                           (map timer-to-str timers)
-                           (map gauge-to-str gauges))]
-    (graphite "localhost" 8003 "stats" epoch datapoints)))
-
 (defn to-graphite-str [prefix datapoint epoch]
   (str prefix "." datapoint " " epoch "\n"))
 
@@ -27,3 +20,10 @@
         writer (java.io.BufferedWriter. (java.io.OutputStreamWriter. (.getOutputStream socket)))]
     (doseq [datapoint datapoints] (.append writer (to-graphite-str prefix datapoint epoch)))
     (.close writer)))
+
+(defn publish [{timestamp :timestamp counters :counters timers :timers gauges :gauges} config]
+  (let [epoch (/ timestamp 1000)
+        datapoints (concat (map counter-to-str counters)
+                           (map timer-to-str timers)
+                           (map gauge-to-str gauges))]
+    (graphite "localhost" 8003 "stats" epoch datapoints)))
