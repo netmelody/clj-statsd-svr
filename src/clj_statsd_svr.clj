@@ -65,7 +65,7 @@
   #(while true (when-let [record (decode (.take queue))] (handle record))))
 
 ;reporting
-(defn report []
+(defn make-report []
   (let [snapshot (ref {})]
     (send statistics flush-stats snapshot)
     (await statistics)
@@ -112,4 +112,4 @@
     (start-receiver (config :port) work-queue)
     (dotimes [_ worker-count] (.submit work-executor (new-worker work-queue)))
     (start-manager (config :mgmt-port) (System/currentTimeMillis)) 
-    (.scheduleAtFixedRate report-executor #(distribute (report) config) (config :flush-interval) (config :flush-interval) TimeUnit/MILLISECONDS)))
+    (.scheduleAtFixedRate report-executor #(distribute (make-report) config) (config :flush-interval) (config :flush-interval) TimeUnit/MILLISECONDS)))
