@@ -53,7 +53,7 @@
 (defn decode [data]
   (if-let [[_ bucket value type sample-rate] (re-matches #"(.+):(\d+)\|(c|ms|g)(?:(?<=c)\|@(\d+(?:\.\d+)?))?" data)]
     (let [nicebucket (-> bucket (re-replace #"\s+" "_") (re-replace #"/" "-") (re-replace #"[^a-zA-Z_\-0-9\.]" "")) 
-          nicevalue (/ (Double/parseDouble value) (Double/parseDouble (or sample-rate "1")))
+          nicevalue (Math/round (/ (Double/parseDouble value) (Double/parseDouble (or sample-rate "1"))))
           nicetype ({"c" :counters "ms" :timers "g" :gauges} type)]
       {:bucket nicebucket :value nicevalue :type nicetype })
     {:bucket :bad_lines_seen :value 1 :type :counters }))
