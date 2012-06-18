@@ -1,6 +1,7 @@
 (ns clj-statsd-svr
   "statsd protocol server"
-  (:use [clojure.string :only [replace] :rename {replace re-replace}]) 
+  (:gen-class)
+  (:use [clojure.string :only [replace] :rename {replace re-replace}])
   (:import [java.net DatagramPacket DatagramSocket])
   (:import [java.util.concurrent Executors LinkedBlockingQueue TimeUnit]))
 
@@ -104,7 +105,7 @@
     (.start (Thread. #(while true (let [socket (.accept server)] (future (manage-via socket startup-time-millis))))))))
 
 ;lifecycle
-(defn start []
+(defn -main []
   (let [worker-count 2
         work-queue (LinkedBlockingQueue.)
         work-executor (Executors/newFixedThreadPool worker-count)
