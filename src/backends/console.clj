@@ -1,7 +1,7 @@
-(ns backends.simple)
+(ns backends.console)
 
 (defn status []
-  "simple.status: OK")
+  "console.status: OK")
 
 (defn publish [report config]
   (println report))
