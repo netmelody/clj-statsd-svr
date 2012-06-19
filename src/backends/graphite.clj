@@ -22,7 +22,7 @@
     (.close writer)))
 
 (defn publish [{timestamp :timestamp counters :counters timers :timers gauges :gauges} config]
-  (let [epoch (/ timestamp 1000)
+  (let [epoch (unchecked-divide-int timestamp 1000)
         datapoints (concat (map counter-to-str counters)
                            (map timer-to-str timers)
                            (map gauge-to-str gauges))]
