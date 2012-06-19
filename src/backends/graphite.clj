@@ -7,10 +7,10 @@
   (str name " " count))
 
 (defn timer-to-str [[name timings]]
-  (str name " " (first timings)))
+  (str "timers." name " " (first timings)))
 
 (defn gauge-to-str [[name value]]
-  (str name " " value))
+  (str "gauges." name " " value))
 
 (defn to-graphite-str [prefix datapoint epoch]
   (str prefix "." datapoint " " epoch "\n"))

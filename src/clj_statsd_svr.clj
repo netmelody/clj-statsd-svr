@@ -29,14 +29,14 @@
                  :gauges   (fn [x] value)})]
     (update-stat stats stat bucket f)))
 
-(defn reset-map [map origin]
-  (into {} (for [[k v] map] [k (if (string? k) origin v)])))
+(defn reset-map [map originfunc]
+  (into {} (for [[k v] map] [k (if (string? k) (originfunc v) v)])))
 
 (defn flush-stats [stats snapshot-ref]
   (dosync (ref-set snapshot-ref stats))
-  {:counters (reset-map (:counters stats) 0)
-   :timers (reset-map (:timers stats) [])
-   :gauges (reset-map (:gauges stats) 0)})
+  {:counters (reset-map (:counters stats) (fn [x] 0))
+   :timers (reset-map (:timers stats) (fn [x] []))
+   :gauges (reset-map (:gauges stats) identity)})
 
 ;listening
 (defn receive [socket]
