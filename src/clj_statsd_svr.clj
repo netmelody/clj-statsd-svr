@@ -9,7 +9,7 @@
 (def config {:port 8125
              :mgmt-port 8126
              :flush-interval 10000
-             :backends '[backends.simple backends.graphite]})
+             :backends '[backends.console backends.graphite]})
 
 ;initialisation
 (def statistics (agent { :counters {} :timers {} :gauges {} }))
