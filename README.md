@@ -13,15 +13,12 @@ implementation for [Node.js][node].
 Concepts
 --------
 
-* *buckets*
-  Each stat is in its own "bucket". They are not predefined anywhere. Buckets can be named anything that will translate to Graphite (periods make folders, etc)
+* *buckets* - Each stat is in its own "bucket". They are not predefined anywhere. Buckets can be named anything that will translate to Graphite (periods make folders, etc)
 
-* *values*
-  Each stat will have a value. How it is interpreted depends on modifiers. In
+* *values* - Each stat will have a value. How it is interpreted depends on modifiers. In
 general values should be integer.
 
-* *flush*
-  After the flush interval timeout (default 10 seconds), stats are
+* *flush* - After the flush interval timeout (default 10 seconds), stats are
   aggregated and sent to an upstream backend service.
 
 Counting
