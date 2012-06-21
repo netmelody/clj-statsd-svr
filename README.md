@@ -173,6 +173,7 @@ metrics: {
   return a string when this function is invoked.
 
 
+[clojure]: http://clojure.org
 [graphite]: http://graphite.wikidot.com
 [etsy]: http://www.etsy.com
 [statsd]: https://github.com/etsy/statsd
