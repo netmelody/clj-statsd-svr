@@ -117,5 +117,7 @@
 ;main
 (defn -main [& [config-file]]
   (let [config (if config-file (load-file config-file) default-config)]
+    (if config-file (println "Loading config" config-file) (println "Using default config"))
+    (println "Backends:" (:backends config))
     (doseq [backend (config :backends)] (require backend))
     (start config)))
