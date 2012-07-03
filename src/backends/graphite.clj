@@ -6,16 +6,16 @@
 (defn prepend [prefix s]
   (if (clojure.string/blank? prefix) s (str prefix "." s)))
 
-(defn counter-to-str [config [name count]]
-  (prepend (::prefix-counters config) (str name " " count)))
+(defn format-us [f & args]
+  (String/format java.util.Locale/US f (to-array args)))
 
-(defn gauge-to-str [config [name value]]
-  (prepend (::prefix-gauges config "gauges") (str name " " value)))
+(defn- fmt [v]
+  (cond (float? v)   (format-us "%2.2f" v)
+        (integer? v) (format-us "%d" v)
+        :else        (format-us "%s" v)))
 
-(defn timer-to-str [config [name timings]]
-  (if (empty? timings)
-    []
-    (prepend (::prefix-timers config "timers") (str name ".random " (first timings)))))
+(defn ->datapoint [prefix [name val]]
+  (prepend prefix (str name " " (fmt val))))
 
 (defn to-graphite-str [config datapoint epoch]
   (prepend (::prefix config "stats") (str datapoint " " epoch "\n")))
@@ -29,11 +29,10 @@
 
 (defn publish [report config]
   (try
-    (let [{timestamp :timestamp counters :counters timers :timers gauges :gauges} report
-          epoch (quot timestamp 1000)
-          datapoints (flatten (concat (map (partial counter-to-str config) counters)
-                                      (map (partial timer-to-str config)   timers)
-                                      (map (partial gauge-to-str config)   gauges)))]
+    (let [epoch (quot (:timestamp report) 1000)
+          datapoints (flatten (concat (map (partial ->datapoint (::prefix-counters config ""))     (:counters report))
+                                      (map (partial ->datapoint (::prefix-timers config "timers")) (:timers report))
+                                      (map (partial ->datapoint (::prefix-gauges config "gauges")) (:gauges report))))]
       (graphite config epoch datapoints))
     (catch Exception e
       (.printStackTrace e))))

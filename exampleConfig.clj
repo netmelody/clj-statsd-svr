@@ -1,6 +1,7 @@
 {:port 8125
  :mgmt-port 8126
  :flush-interval 10000
+ :percentiles [0.9 0.95 0.99 0.999]
  :backends '[backends.console
              backends.graphite]
  :backends.graphite/host "localhost"

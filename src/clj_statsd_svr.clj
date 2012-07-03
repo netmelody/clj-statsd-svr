@@ -18,18 +18,53 @@
 
 (defn update-stat-val [stats stat bucket value]
   (let [f (stat {:counters (fn [x] (+ value (or x 0)))
-                 :timers   (fn [x] (conj x value)) 
+                 :timers   (fn [x] (conj (or x (sorted-set)) value)) 
                  :gauges   (fn [x] value)})]
     (update-stat stats stat bucket f)))
 
 (defn reset-map [map originfunc]
   (into {} (for [[k v] map] [k (if (string? k) (originfunc v) v)])))
 
-(defn flush-stats [stats snapshot-ref]
-  (dosync (ref-set snapshot-ref stats))
+(defn report-counter [config [name val]]
+  {name (* val (/ 1000.0 (:flush-interval config)))}) ; value per sec
+
+(defn percentile [p vals]
+  (take (long (* p (count vals))) vals))
+
+(defn percentile->str
+  "Formats 0.9 0.99 0.9999 to '90' '99' '9999' respectively"
+  [p] 
+  (second (re-matches #"0[\.,](\d\d[^0]*)0*" (format "%.10f" p))))
+
+(defn report-timer
+  ([[name vals]]
+    (if (empty? vals)
+      {}
+      {(str name ".upper") (apply max vals)
+       (str name ".lower") (apply min vals)
+       (str name ".mean" ) (/ (double (apply + vals)) (count vals))}))
+  ([p [name vals]]
+    (let [vals   (percentile p vals)
+          suffix (percentile->str p)]
+      (if (empty? vals)
+        {}
+        {(str name ".upper_" suffix) (apply max vals)
+         (str name ".mean_"  suffix) (/ (double (apply + vals)) (count vals))}))))
+
+(defn report-all [stats config]
+  (let [counters (map (partial report-counter config) (:counters stats))
+        timers   (map report-timer (:timers stats))
+        percentiles (for [p (:percentiles config)]
+                          (map (partial report-timer p) (:timers stats)))]
+    {:counters (apply merge counters)
+     :timers (apply merge (flatten [timers percentiles]))
+     :gauges (:gauges stats)}))
+
+(defn flush-stats [stats config snapshot]
+  (deliver snapshot (report-all stats config))
   {:counters (reset-map (:counters stats) (fn [x] 0))
-   :timers (reset-map (:timers stats) (fn [x] []))
-   :gauges (reset-map (:gauges stats) identity)})
+   :timers   (reset-map (:timers stats) (fn [x] []))
+   :gauges   {}})
 
 ;listening
 (defn receive [socket]
@@ -59,10 +94,9 @@
   #(while true (when-let [record (decode (.take queue))] (handle record))))
 
 ;reporting
-(defn make-report []
-  (let [snapshot (ref {})]
-    (send statistics flush-stats snapshot)
-    (await statistics)
+(defn make-report [config]
+  (let [snapshot (promise)]
+    (send statistics flush-stats config snapshot)
     (assoc @snapshot :timestamp (System/currentTimeMillis))))
 
 (defn distribute [report config]
@@ -106,18 +140,19 @@
     (start-receiver (config :port) work-queue)
     (dotimes [_ worker-count] (.submit work-executor (new-worker work-queue)))
     (start-manager (config :mgmt-port) (config :backends) (System/currentTimeMillis)) 
-    (.scheduleAtFixedRate report-executor #(distribute (make-report) config) (config :flush-interval) (config :flush-interval) TimeUnit/MILLISECONDS)))
+    (.scheduleAtFixedRate report-executor #(distribute (make-report config) config) (config :flush-interval) (config :flush-interval) TimeUnit/MILLISECONDS)))
 
 ;configuration
 (def default-config {:port 8125
                      :mgmt-port 8126
                      :flush-interval 10000
+                     :percentiles [0.9]
                      :backends '[backends.console]})
 
 ;main
 (defn -main [& [config-file]]
-  (let [config (if config-file (load-file config-file) default-config)]
-    (if config-file (println "Loading config" config-file) (println "Using default config"))
+  (if config-file (println "Loading config" config-file) (println "Using default config"))
+  (let [config (merge default-config (if config-file (load-file config-file) {}))]
     (println "Backends:" (:backends config))
     (doseq [backend (config :backends)] (require backend))
     (start config)))
