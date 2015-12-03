@@ -79,6 +79,7 @@
 
 ;decoding
 (defn decode [data]
+  (println ">>>" data)
   (if-let [[_ bucket value type sample-rate] (re-matches #"(.+):(\d+)\|(c|ms|g)(?:(?<=c)\|@(\d+(?:\.\d+)?))?" data)]
     (let [nicebucket (-> bucket (re-replace #"\s+" "_") (re-replace #"/" "-") (re-replace #"[^a-zA-Z_\-0-9\.]" "")) 
           nicevalue (Math/round (/ (Double/parseDouble value) (Double/parseDouble (or sample-rate "1"))))
@@ -147,7 +148,7 @@
                      :mgmt-port 8126
                      :flush-interval 10000
                      :percentiles [0.9]
-                     :backends '[backends.console]})
+                     :backends '[]})
 
 ;main
 (defn -main [& [config-file]]
