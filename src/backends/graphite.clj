@@ -3,29 +3,36 @@
 (defn status []
   "graphite.status: OK")
 
-(defn counter-to-str [[name count]]
-  (str name " " count))
+(defn prepend [prefix s]
+  (if (clojure.string/blank? prefix) s (str prefix "." s)))
 
-(defn gauge-to-str [[name value]]
-  (str "gauges." name " " value))
+(defn format-us [f & args]
+  (String/format java.util.Locale/US f (to-array args)))
 
-(defn timer-to-str [[name timings]]
-  (if (empty? timings)
-    []
-    (str "timers." name " " (first timings))))
+(defn- fmt [v]
+  (cond (float? v)   (format-us "%2.2f" v)
+        (integer? v) (format-us "%d" v)
+        :else        (format-us "%s" v)))
 
-(defn to-graphite-str [prefix datapoint epoch]
-  (str prefix "." datapoint " " epoch "\n"))
+(defn ->datapoint [prefix [name val]]
+  (prepend prefix (str name " " (fmt val))))
 
-(defn graphite [host port prefix epoch datapoints]
-  (let [socket (java.net.Socket. host port)
-        writer (java.io.BufferedWriter. (java.io.OutputStreamWriter. (.getOutputStream socket)))]
-    (doseq [datapoint datapoints] (.append writer (to-graphite-str prefix datapoint epoch)))
-    (.close writer)))
+(defn to-graphite-str [config datapoint epoch]
+  (prepend (::prefix config "stats") (str datapoint " " epoch "\n")))
 
-(defn publish [{timestamp :timestamp counters :counters timers :timers gauges :gauges} config]
-  (let [epoch (unchecked-divide-int timestamp 1000)
-        datapoints (flatten (concat (map counter-to-str counters)
-                                    (map timer-to-str timers)
-                                    (map gauge-to-str gauges)))]
-    (graphite "localhost" 8003 "stats" epoch datapoints)))
+(defn graphite [config epoch datapoints]
+  (let [{host ::host, port ::port  :or  {host "localhost", port 2003}} config]
+    (with-open [w (clojure.java.io/writer (java.net.Socket. host port))]
+      (binding [*out* w] 
+        (doseq [datapoint datapoints]
+          (print (to-graphite-str config datapoint epoch)))))))
+
+(defn publish [report config]
+  (try
+    (let [epoch (quot (:timestamp report) 1000)
+          datapoints (flatten (concat (map (partial ->datapoint (::prefix-counters config ""))     (:counters report))
+                                      (map (partial ->datapoint (::prefix-timers config "timers")) (:timers report))
+                                      (map (partial ->datapoint (::prefix-gauges config "gauges")) (:gauges report))))]
+      (graphite config epoch datapoints))
+    (catch Exception e
+      (.printStackTrace e))))
